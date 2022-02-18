@@ -1,8 +1,8 @@
 /* eslint-disable class-methods-use-this */
-import { ElementHandle, KeyInput } from 'puppeteer';
-import fs from 'fs';
+import { KeyInput } from 'puppeteer';
 import path from 'path';
 import Browser from '../browser/browser';
+import Helper from '../helper';
 
 type Feedback = {
   atempt: number;
@@ -87,11 +87,11 @@ export default class Game {
     feedbacks.forEach((feedback: any) => {
       if (feedback.correctPosition) {
         this.correctLettersInCorrectPosition[feedback.pos] =
-          this.sanitizeLetter(feedback.letter);
+          Helper.sanitizeLetter(feedback.letter);
       }
       if (feedback.correctLetter) {
         this.correctLettersInwrongPosition[feedback.pos].push(
-          this.sanitizeLetter(feedback.letter),
+          Helper.sanitizeLetter(feedback.letter),
         );
       }
       if (!feedback.correctPosition && !feedback.correctLetter) {
@@ -101,17 +101,10 @@ export default class Game {
             ...this.correctLettersInwrongPosition.flat(),
           ].includes(feedback.letter)
         ) {
-          this.wrongLetters.push(this.sanitizeLetter(feedback.letter));
+          this.wrongLetters.push(Helper.sanitizeLetter(feedback.letter));
         }
       }
     });
-  }
-
-  private sanitizeLetter(letter: string) {
-    return letter
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
   }
 
   public checkStatusLetter(el: any) {
@@ -219,16 +212,8 @@ export default class Game {
     return regex;
   }
 
-  private readFile(file: string) {
-    return fs.readFileSync(file, 'utf8');
-  }
-
-  private getWordsFromFile(file: string) {
-    return this.readFile(file).split('\n');
-  }
-
   private selectWord(regex: RegExp) {
-    const words = this.getWordsFromFile(
+    const words = Helper.getWordsFromFile(
       path.join(__dirname, `../../public/word-list.${this.lang}.txt`),
     );
     const wordList = words
@@ -238,83 +223,27 @@ export default class Game {
     const word0 = wordList
       .filter((w) => this.testLettersInWrongPosition(w, 0))
       .sort(() => Math.random() - 0.4)
-      .sort((a, b) => {
-        const aLetters = new Set(a.split(''));
-        const bLetters = new Set(b.split(''));
-        const aLettersCount = aLetters.size;
-        const bLettersCount = bLetters.size;
-        if (aLettersCount > bLettersCount) {
-          return -1;
-        }
-        if (aLettersCount < bLettersCount) {
-          return 1;
-        }
-        return 0;
-      })[0];
+      .sort((a, b) => Helper.sortByIfWordHasRepeatedLetters(a, b))[0];
+
     const word1 = wordList
       .filter((w) => this.testLettersInWrongPosition(w, 1))
       .sort(() => Math.random() - 0.4)
-      .sort((a, b) => {
-        const aLetters = new Set(a.split(''));
-        const bLetters = new Set(b.split(''));
-        const aLettersCount = aLetters.size;
-        const bLettersCount = bLetters.size;
-        if (aLettersCount > bLettersCount) {
-          return -1;
-        }
-        if (aLettersCount < bLettersCount) {
-          return 1;
-        }
-        return 0;
-      })[0];
+      .sort((a, b) => Helper.sortByIfWordHasRepeatedLetters(a, b))[0];
+
     const word2 = wordList
       .filter((w) => this.testLettersInWrongPosition(w, 2))
       .sort(() => Math.random() - 0.4)
-      .sort((a, b) => {
-        const aLetters = new Set(a.split(''));
-        const bLetters = new Set(b.split(''));
-        const aLettersCount = aLetters.size;
-        const bLettersCount = bLetters.size;
-        if (aLettersCount > bLettersCount) {
-          return -1;
-        }
-        if (aLettersCount < bLettersCount) {
-          return 1;
-        }
-        return 0;
-      })[0];
+      .sort((a, b) => Helper.sortByIfWordHasRepeatedLetters(a, b))[0];
+
     const word3 = wordList
       .filter((w) => this.testLettersInWrongPosition(w, 3))
       .sort(() => Math.random() - 0.4)
-      .sort((a, b) => {
-        const aLetters = new Set(a.split(''));
-        const bLetters = new Set(b.split(''));
-        const aLettersCount = aLetters.size;
-        const bLettersCount = bLetters.size;
-        if (aLettersCount > bLettersCount) {
-          return -1;
-        }
-        if (aLettersCount < bLettersCount) {
-          return 1;
-        }
-        return 0;
-      })[0];
+      .sort((a, b) => Helper.sortByIfWordHasRepeatedLetters(a, b))[0];
+
     const word4 = wordList
       .filter((w) => this.testLettersInWrongPosition(w, 4))
       .sort(() => Math.random() - 0.4)
-      .sort((a, b) => {
-        const aLetters = new Set(a.split(''));
-        const bLetters = new Set(b.split(''));
-        const aLettersCount = aLetters.size;
-        const bLettersCount = bLetters.size;
-        if (aLettersCount > bLettersCount) {
-          return -1;
-        }
-        if (aLettersCount < bLettersCount) {
-          return 1;
-        }
-        return 0;
-      })[0];
+      .sort((a, b) => Helper.sortByIfWordHasRepeatedLetters(a, b))[0];
 
     const word = wordList.sort(() => Math.random() - 0.5)[0];
     const possibleGuesses = [word0, word1, word2, word3, word4].filter(
@@ -322,6 +251,7 @@ export default class Game {
     );
     const randomWord =
       possibleGuesses[Math.floor(Math.random() * possibleGuesses.length)];
+    console.log({ word0, word1, word2, word3, word4, word, randomWord });
 
     return randomWord || word;
   }

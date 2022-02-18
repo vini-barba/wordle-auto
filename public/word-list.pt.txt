@@ -789,7 +789,6 @@ bloco
 bloga
 bluco
 blues
-bluff
 blusa
 bndes
 boate
@@ -4217,7 +4216,6 @@ pouco
 poula
 poule
 poulo
-pound
 poupa
 poupe
 poupo
@@ -5007,13 +5005,8 @@ sovei
 sovem
 soves
 sovou
-sport
 spray
-sprue
-staff
 stand
-stoll
-stout
 suabe
 suado
 suave
@@ -5024,7 +5017,7 @@ subia
 subir
 subis
 subiu
-subst.
+subst
 sucho
 sucia
 sucre
@@ -5571,7 +5564,6 @@ utero
 uvaia
 uviar
 uvula
-uyezd
 vacao
 vacar
 vacua
@@ -5781,7 +5773,6 @@ vivos
 voava
 vocal
 voces
-voclp
 vodca
 vodka
 voeja
@@ -5914,7 +5905,6 @@ ziper
 zipes
 zipou
 zloti
-zloty
 zoeia
 zoiao
 zoico
