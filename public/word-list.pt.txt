@@ -682,7 +682,6 @@ basse
 basta
 baste
 basto
-batch
 batel
 bater
 batom
@@ -3259,7 +3258,6 @@ matam
 matao
 matar
 matas
-match
 matei
 matem
 mates
@@ -3938,7 +3936,6 @@ paste
 pasto
 patas
 patau
-patch
 patia
 patim
 patio
@@ -5584,6 +5581,7 @@ valar
 valas
 valda
 valdo
+valem
 valer
 vales
 valha

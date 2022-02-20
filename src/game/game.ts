@@ -1,22 +1,23 @@
 /* eslint-disable class-methods-use-this */
-import { KeyInput } from 'puppeteer';
+import { ElementHandle, KeyInput } from 'puppeteer';
 import path from 'path';
 import Browser from '../browser/browser';
 import Helper from '../helper';
 
 type Feedback = {
-  atempt: number;
   letter: string;
   correctLetter: boolean;
   correctPosition: boolean;
   pos: number;
 };
 export default class Game {
-  private browser: Browser;
+  protected browser: Browser;
 
-  private firstWord: string;
+  protected firstWord: string;
 
-  public correctLettersInwrongPosition: string[][] = [
+  protected secondWord?: string;
+
+  private correctLettersInwrongPosition: string[][] = [
     [''],
     [''],
     [''],
@@ -24,19 +25,32 @@ export default class Game {
     [''],
   ];
 
-  public correctLettersInCorrectPosition: string[] = ['', '', '', '', ''];
+  private correctLettersInCorrectPosition: string[] = ['', '', '', '', ''];
 
-  public wrongLetters: string[] = [];
+  private wrongLetters: string[] = [];
 
-  private guesses: string[] = [];
+  protected invalidWords: string[] = [];
 
-  private feedback: Feedback[] = [];
+  protected guesses: string[] = [];
+
+  protected feedback: Feedback[] = [];
 
   private lang: string;
 
-  constructor(browser: Browser, firstWord: string, lang: string) {
+  constructor({
+    browser,
+    firstWord,
+    secondWord,
+    lang,
+  }: {
+    browser: Browser;
+    firstWord: string;
+    secondWord?: string;
+    lang: string;
+  }) {
     this.browser = browser;
     this.firstWord = firstWord;
+    this.secondWord = secondWord;
     this.lang = lang;
   }
 
@@ -49,7 +63,7 @@ export default class Game {
     // eslint-disable-next-line no-restricted-syntax
     for await (const guess of guesses) {
       try {
-        await guesses.next().value;
+        await guesses.next(this.secondWord).value;
       } catch (e) {
         guesses.return();
       }
@@ -59,21 +73,25 @@ export default class Game {
   *makeGuesses() {
     yield this.firstGuess();
     while (true) {
-      yield this.guess();
+      yield this.guess(this.secondWord);
     }
   }
 
-  private async enterWord(word: string) {
-    // eslint-disable-next-line no-restricted-syntax
-    for await (const char of word) {
-      await this.browser.pressKey(char as KeyInput);
-      await this.browser.waitForTimeout(200);
+  protected async enterWord(word: string) {
+    if (!word) {
+      await this.browser.close();
+    } else {
+      // eslint-disable-next-line no-restricted-syntax
+      for await (const char of word) {
+        await this.browser.pressKey(char as KeyInput);
+        await this.browser.waitForTimeout(200);
+      }
+      await this.browser.pressKey('Enter');
+      await this.browser.waitForTimeout(2000);
     }
-    await this.browser.pressKey('Enter');
-    await this.browser.waitForTimeout(2000);
   }
 
-  private async getGuessFeedback(selector: string) {
+  protected async getGuessFeedback(selector: string | ElementHandle<Element>) {
     const letters = await this.browser.getElement(`${selector}>.letter`);
 
     const promises = letters.map((letter: any) => {
@@ -83,7 +101,7 @@ export default class Game {
     return Promise.all(promises);
   }
 
-  private fillMetaFeedback(feedbacks: Feedback[]) {
+  protected fillMetaFeedback(feedbacks: Feedback[]) {
     feedbacks.forEach((feedback: any) => {
       if (feedback.correctPosition) {
         this.correctLettersInCorrectPosition[feedback.pos] =
@@ -121,7 +139,7 @@ export default class Game {
     };
   }
 
-  private checkIfGuessIsValid(feedback: Feedback[]) {
+  protected checkIfGuessIsValid(feedback: Feedback[]) {
     return (
       Object.entries(feedback).filter(
         ([, f]) => f.correctPosition || f.correctLetter,
@@ -129,7 +147,7 @@ export default class Game {
     );
   }
 
-  private async eraseGuess() {
+  protected async eraseGuess() {
     await this.browser.pressKey('Backspace');
     await this.browser.pressKey('Backspace');
     await this.browser.pressKey('Backspace');
@@ -137,7 +155,7 @@ export default class Game {
     await this.browser.pressKey('Backspace');
   }
 
-  private async firstGuess() {
+  protected async firstGuess() {
     await this.enterWord(this.firstWord);
     const feedback = await this.getGuessFeedback(
       `[aria-label="palavra ${this.guesses.length + 1}"]`,
@@ -158,9 +176,9 @@ export default class Game {
     }
   }
 
-  private async guess(chosenWord?: string) {
+  protected async guess(chosenWord?: string) {
     let word = chosenWord!;
-    if (!chosenWord) {
+    if (!chosenWord || this.guesses.includes(word)) {
       const regex = this.generateRegexByLetters();
       word = this.selectWord(regex);
     }
@@ -172,6 +190,7 @@ export default class Game {
 
     const isFeedbackValid = this.checkIfGuessIsValid(feedback);
     if (!isFeedbackValid) {
+      this.invalidWords.push(word);
       await this.eraseGuess();
       await this.guess();
     } else {
@@ -181,7 +200,7 @@ export default class Game {
     }
   }
 
-  private generateRegexByLetters() {
+  protected generateRegexByLetters() {
     const lettersList = ['', '', '', '', ''];
 
     this.correctLettersInCorrectPosition.forEach((letter, index) => {
@@ -212,53 +231,30 @@ export default class Game {
     return regex;
   }
 
-  private selectWord(regex: RegExp) {
+  protected selectWord(regex: RegExp) {
     const words = Helper.getWordsFromFile(
       path.join(__dirname, `../../public/word-list.${this.lang}.txt`),
-    );
+    ).filter((word) => {
+      return !this.invalidWords.includes(word);
+    });
     const wordList = words
       .filter((w) => regex.test(w))
       .filter((w) => !this.guesses.includes(w));
 
-    const word0 = wordList
-      .filter((w) => this.testLettersInWrongPosition(w, 0))
-      .sort(() => Math.random() - 0.4)
-      .sort((a, b) => Helper.sortByIfWordHasRepeatedLetters(a, b))[0];
-
-    const word1 = wordList
-      .filter((w) => this.testLettersInWrongPosition(w, 1))
-      .sort(() => Math.random() - 0.4)
-      .sort((a, b) => Helper.sortByIfWordHasRepeatedLetters(a, b))[0];
-
-    const word2 = wordList
-      .filter((w) => this.testLettersInWrongPosition(w, 2))
-      .sort(() => Math.random() - 0.4)
-      .sort((a, b) => Helper.sortByIfWordHasRepeatedLetters(a, b))[0];
-
-    const word3 = wordList
-      .filter((w) => this.testLettersInWrongPosition(w, 3))
-      .sort(() => Math.random() - 0.4)
-      .sort((a, b) => Helper.sortByIfWordHasRepeatedLetters(a, b))[0];
-
-    const word4 = wordList
-      .filter((w) => this.testLettersInWrongPosition(w, 4))
-      .sort(() => Math.random() - 0.4)
-      .sort((a, b) => Helper.sortByIfWordHasRepeatedLetters(a, b))[0];
+    const possible = this.testRegexCombination(wordList);
 
     const word = wordList.sort(() => Math.random() - 0.5)[0];
-    const possibleGuesses = [word0, word1, word2, word3, word4].filter(
-      (w) => w !== undefined,
-    );
+    const possibleGuesses = possible.filter((w) => w !== undefined);
     const randomWord =
       possibleGuesses[Math.floor(Math.random() * possibleGuesses.length)];
-    console.log({ word0, word1, word2, word3, word4, word, randomWord });
+
+    console.log({ possibleGuesses, randomWord, word });
 
     return randomWord || word;
   }
 
-  private testLettersInWrongPosition(w: string, pos: number) {
+  private generateRegexWithLettersInWrongPosition(pos: number) {
     const correctLetters = this.correctLettersInCorrectPosition;
-
     const t = correctLetters.map((l, index) => {
       if (l !== '') {
         return `[${l}]`;
@@ -281,9 +277,45 @@ export default class Game {
     });
 
     const regex = new RegExp(t.join(''));
+    return regex;
+  }
 
-    const test = regex.test(w);
+  private testRegexCombination(wordList: string[]) {
+    const regexPos0 = this.generateRegexWithLettersInWrongPosition(0);
+    const regexPos1 = this.generateRegexWithLettersInWrongPosition(1);
+    const regexPos2 = this.generateRegexWithLettersInWrongPosition(2);
+    const regexPos3 = this.generateRegexWithLettersInWrongPosition(3);
+    const regexPos4 = this.generateRegexWithLettersInWrongPosition(4);
 
-    return test;
+    const regexMap: { [k: number]: RegExp } = {
+      0: regexPos0,
+      1: regexPos1,
+      2: regexPos2,
+      3: regexPos3,
+      4: regexPos4,
+    };
+    const possibleCombinations = 31;
+
+    const words = [];
+    // eslint-disable-next-line no-plusplus
+    for (let i = 0; i <= possibleCombinations; i++) {
+      const combination = i.toString(2).padStart(5, '0').split('');
+
+      const t = combination.reduce((acc, curr, index) => {
+        if (curr === '1') {
+          const newWordList = acc.filter((w) => regexMap[index].test(w));
+          // eslint-disable-next-line no-param-reassign
+          acc = newWordList;
+        }
+
+        return acc;
+      }, wordList);
+      const chosenWord = t
+        .sort(() => Math.random() - 0.5)
+        .sort((a, b) => Helper.sortByIfWordHasRepeatedLetters(a, b))[0];
+      words.push(chosenWord);
+    }
+
+    return words;
   }
 }

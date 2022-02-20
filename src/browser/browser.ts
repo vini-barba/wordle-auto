@@ -48,6 +48,10 @@ export default class Browser {
     return this.page.$$(selector);
   }
 
+  public async getShadowElement(parentSelector: string) {
+    return this.page.$(parentSelector);
+  }
+
   public async evaluate(fn: any, ...args: any[]) {
     return this.page.evaluate(fn, ...args);
   }
